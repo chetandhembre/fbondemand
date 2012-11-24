@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+   <title>nodejs - facebook</title>
+</head>
+<body>
+	<div>
+           <button id="login">Login</button>
+           <button id="logout">Logout</button>
+           <button id="timeline">Timeline</button>
+	</div>
+    <br>
+    <span id="user-info" style="border:1px solid #888"></span>
+    <span id="fb-root"></span>
+
+    <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+    <script src="http://connect.facebook.net/en_US/all.js"></script>
+    <script>
+        var req_array=[];
+        // initialize the library with the API key
+        var access_token;
+        var username;
+        FB.init({ appId:'436078529790429'});
+   
+        // fetch the status on load
+        FB.getLoginStatus(handleSessionResponse,{scope: 'read_stream,publish_stream'});
+
+        $('#login').bind('click', function() {
+            FB.login(handleSessionResponse,{scope: 'read_stream,publish_stream'});
+        });
+
+        $('#logout').bind('click', function() {
+            FB.logout(handleSessionResponse);
+        });
+        
+        $("#timeline").bind('click',function(){
+        	var url='https://graph.facebook.com/me/feed?since=1353609000&access_token='+access_token;
+        	fetchfeed(url);
+        })
+
+         
+        function fetchfeed(url){
+        	
+        	$.getJSON(url,function(response){
+           		console.log(response);
+        		checkit(response)
+        	}) 
+        	
+        } 
+        
+        function checkit(response){
+        	var req_array=[];
+        	var repeat=1;
+        	data_array=response.data;
+        	for(var i=0;i<data_array.length;i++){
+        		var data=data_array[i];
+        		var ctime=data.created_time+"";
+        		ctime=ctime.split("T");
+        		ctime=ctime[0];
+        		if(ctime.toString().indexOf("2012-11-24")!==-1){
+        			 var comments=data.comments;
+        			 //console.log(comments.count);
+        			  if(comments.count!==0){
+        			  	console.log(comments);
+        			  	var fflag=0;
+        			  	var comment_data=comments.data;
+        			  	for(var j=0;j<comments.count;j++){
+        			  		try{
+        			  		if(comment_data[j].from!==undefined || comment_data[j].from !== null){
+		    			  		if(comment_data[j].from.name===username){
+		    			  			fflag=1;
+		    			  			break;
+		    			  		}
+        			  		}
+        			  		}catch(error){
+        			  			console.log(comment_data.length+":"+error);
+        			  		}
+        			  		
+        			  	}
+        			  	
+        			  	if(fflag==0){
+	        			  	  if(data.message!==undefined){
+		        				var f=data.message;
+		        				if(((f.toUpperCase().indexOf("B'DAY")!==-1) || (f.toUpperCase().indexOf("BIRTHDAY")!==-1) || (f.toUpperCase().indexOf("B'THDAY")!==-1) || (f.toUpperCase().indexOf("B-DAY")!==-1) || (f.toUpperCase().indexOf("BDAY")!==-1) || (f.toUpperCase().indexOf("BRTHAY")!==-1) || (f.toUpperCase().indexOf("B'THDAY")!==-1) || (f.toUpperCase().indexOf("B'DE")!==-1)) & ( (f.toUpperCase().indexOf("HAPPY")!==-1) || (f.toUpperCase().indexOf("HPY")!==-1) || (f.toUpperCase().indexOf("HAPPY")!==-1))){
+							    	   //console.log(f+":-"+post_array[i].from.name);
+							    	   var id=data.id;
+							    	   var obj=new Object();
+							    	   obj.id=id.toString();
+							    	   obj.user=data.from.name;
+							    	   obj.ctime=ctime;
+							    	   req_array.push(obj);	
+							    	   
+							    }
+		        			}	
+        			  	}
+        			  }else{
+	        			if(data.message!==undefined){
+	        				var f=data.message;
+	        				if(((f.toUpperCase().indexOf("B'DAY")!==-1) || (f.toUpperCase().indexOf("BIRTHDAY")!==-1) || (f.toUpperCase().indexOf("B'THDAY")!==-1) || (f.toUpperCase().indexOf("B-DAY")!==-1) || (f.toUpperCase().indexOf("BDAY")!==-1) || (f.toUpperCase().indexOf("BRTHAY")!==-1) || (f.toUpperCase().indexOf("B'THDAY")!==-1) || (f.toUpperCase().indexOf("B'DE")!==-1)) & ( (f.toUpperCase().indexOf("HAPPY")!==-1) || (f.toUpperCase().indexOf("HPY")!==-1) || (f.toUpperCase().indexOf("HAPPY")!==-1))){
+						    	   //console.log(f+":-"+post_array[i].from.name);
+						    	   var id=data.id;
+						    	   var obj=new Object();
+						    	   obj.id=id.toString();
+						    	   obj.user=data.from.name;
+						    	   obj.ctime=ctime;
+						    	   req_array.push(obj);	
+						    	   
+						    }
+	        			}
+        			}
+        		}else{
+        			console.log(ctime);
+        			repeat=0;
+        			break;
+        		
+        		}
+        	}
+        	
+        	//console.log("req_array:");
+        	//console.log(req_array);
+        	likeit(req_array);
+        	commentit(req_array);
+        	if(repeat===1){
+        		var url= response.paging.next+"";
+        		fetchfeed(url)
+        	}
+        }
+     
+        function likeit(req_array){
+        	console.log("liked!!:");
+        	console.log(req_array);
+        	for(var i=0;i<req_array.length;i++){
+        		console.log(req_array[i].id+":"+req_array[i].user)
+        		url='https://graph.facebook.com/'+req_array[i].id+'/likes?access_token='+access_token;
+			   $.post(url,{},function(data) {
+				  console.log(data);
+				});
+			
+        	}
+        }
+        
+        function commentit(req_array){
+        	console.log("commented!!:");
+        	console.log(req_array);
+        	for(var i=0;i<req_array.length;i++){
+        		console.log(req_array[i].id+":"+req_array[i].user)
+        		url='https://graph.facebook.com/'+req_array[i].id+'/comments?access_token='+access_token;
+        		var body="thank you!! " + req_array[i].user +" :)";
+			   $.post(url,{message:body},function(data) {
+				  console.log(data);
+				});
+				
+			
+        	}
+        }
+         
+        // handle a session response from any of the auth related calls
+        function handleSessionResponse() {
+        	 access_token =   FB.getAuthResponse()['accessToken'];
+     		console.log('Access Token = '+ access_token);
+            FB.api('/me', function(response) {
+                console.log(response);
+                username=response.name
+            });
+   }
+        
+    </script>
+</body>
+</html>
